@@ -13,9 +13,9 @@ Installation
 Supported platforms
 -------------------
 
-[x] `CentOS 7`
-[ ] `Debian`
-[ ] `Ubuntu`
+ - [x] `CentOS 7`
+ - [ ] `Debian`
+ - [ ] `Ubuntu`
 
 Role Variables
 --------------
