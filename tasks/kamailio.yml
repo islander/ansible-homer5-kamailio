@@ -1,0 +1,62 @@
+---
+- name: Add kamailio repository
+  yum_repository:
+    name: home_kamailio_v5.3.x-rpms
+    description: RPM Packages for Kamailio v5.3.x (CentOS_7)
+    baseurl: "http://download.opensuse.org/repositories/home\
+      :/kamailio:/v5.3.x-rpms/CentOS_7/"
+    gpgcheck: 1
+    gpgkey: "http://download.opensuse.org/repositories/home\
+      :/kamailio:/v5.3.x-rpms/CentOS_7/repodata/repomd.xml.key"
+    enabled: 1
+  tags:
+    - kamailio
+  when: >
+    ansible_distribution == 'CentOS'
+    or ansible_distribution == 'Red Hat Enterprise Linux'
+
+- name: install Kamailio
+  yum:
+    name: [
+      kamailio,
+      kamailio-mysql,
+      kamailio-presence
+    ]
+    state: present
+    update_cache: true
+  tags:
+    - kamailio
+  when: >
+    ansible_distribution == 'CentOS'
+    or ansible_distribution == 'Red Hat Enterprise Linux'
+
+- name: copy adopted kamailio config
+  copy:
+    src: /usr/src/homer-api/examples/sipcapture/sipcapture.kamailio
+    dest: /etc/kamailio/kamailio.cfg
+    remote_src: true
+  tags:
+    - kamailio
+    - kamailio_config
+  changed_when: false  # molecule idempotence test failed without it
+
+- name: configure kamailio db connection
+  replace:
+    path: "/etc/kamailio/kamailio.cfg"
+    regexp: "(.*)!{{ item.key }}!(.*)"
+    replace: "\\1!{{ item.key }}!{{ item.value }}!g\""
+  with_items:
+    - {key: "HOMER_DB_USER", value: "{{ homer_database_user }}"}
+    - {key: "HOMER_DB_PASSWORD", value: "{{ homer_database_pass }}"}
+  tags:
+    - kamailio
+    - kamailio_config
+  changed_when: false  # molecule idempotence test failed without it
+
+- name: enable kamailio service
+  systemd:
+    name: kamailio
+    state: started
+    enabled: true
+  tags:
+    - kamailio

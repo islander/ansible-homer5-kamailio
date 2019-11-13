@@ -1,0 +1,7 @@
+---
+nginx_config: /etc/nginx/sites-enabled/default
+homer_webroot: /var/www/html
+homer_database_user: homer
+homer_database_pass: homer
+homer_api_version: 5.0.6
+homer_ui_version: 5.0.6

@@ -1,0 +1,7 @@
+---
+- name: Install packages
+  apt:
+    pkg: nginx
+    state: present
+    update_cache: true
+    cache_valid_time: 28800  # 8 hours

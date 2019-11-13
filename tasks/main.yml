@@ -1,0 +1,41 @@
+---
+- name: gather os specific variables
+  include_vars: "{{ item }}"
+  with_first_found:
+    - "{{ ansible_distribution | lower }}-\
+      {{ ansible_distribution_major_version }}.yml"
+    - "{{ ansible_distribution | lower }}.yml"
+  tags: vars
+
+- name: install depenencies
+  package:
+    pkg: [
+      git,
+      php,
+      php-fpm,
+      php-mysql
+    ]
+    state: present
+
+- name: HOMER playbook
+  include_tasks: homer.yml
+  tags: [
+    config,
+    homer,
+    git,
+    cron,
+    rotation,
+  ]
+
+- name: HOMER database playbook
+  include_tasks: homer_db.yml
+  tags: [
+    homer_db,
+  ]
+
+- name: Kamailio playbook
+  include_tasks: kamailio.yml
+  tags: [
+    kamailio,
+    kamailio_config
+  ]

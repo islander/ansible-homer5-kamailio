@@ -1,0 +1,150 @@
+---
+- name: git clone homer-api
+  git:
+    repo: 'https://github.com/sipcapture/homer-api.git'
+    dest: /usr/src/homer-api
+    version: "{{ homer_api_version }}"
+  tags:
+    - homer
+    - git
+
+- name: git clone homer-ui
+  git:
+    repo: 'https://github.com/sipcapture/homer-ui.git'
+    dest: /usr/src/homer-ui
+    version: "{{ homer_ui_version }}"
+  tags:
+    - homer
+    - git
+
+- name: get list of files in scripts/
+  find:
+    path: /usr/src/homer-api/scripts/
+    file_type: file
+  register: scripts_files
+  tags:
+    - homer
+    - cron
+    - rotation
+
+- name: ensures /opt/sipcapture dir exists
+  file: path=/opt/sipcapture state=directory
+  tags:
+    - homer
+    - cron
+    - rotation
+
+- name: copy mysql rotation scripts
+  copy:
+    src: "{{ item.path }}"
+    dest: /opt/sipcapture/
+    mode: preserve
+    remote_src: true
+  with_items: "{{ scripts_files.files }}"
+  tags:
+    - homer
+    - cron
+    - rotation
+  changed_when: False  # molecule idempotence test failed without it
+
+- name: configure rotation script
+  ini_file:
+    path: /opt/sipcapture/rotation.ini
+    section: MYSQL
+    option: "{{ item.key }}"
+    value: "{{ item.value }}"
+    mode: '0660'
+  with_items:
+    - {key: "user", value: "{{ homer_database_user }}"}
+    - {key: "password", value: "{{ homer_database_pass }}"}
+  tags:
+    - homer
+    - cron
+    - rotation
+  changed_when: False  # molecule idempotence test failed without it
+
+- name: Add cronjob for homer mysql rotation script
+  cron:
+    user: root
+    name: "homer rotate"
+    minute: "30"
+    hour: "4"
+    job: "/opt/sipcapture/homer_mysql_rotate > /dev/null 2>&1"
+    cron_file: homer-rotate
+  tags:
+    - homer
+    - cron
+    - rotation
+
+- name: Configure nginx
+  template:
+    src: nginx.j2
+    dest: "{{ nginx_config }}"
+  tags:
+    - homer
+    - web
+
+- name: get list of files in scripts/
+  find:
+    path: /usr/src/homer-ui
+    excludes: .git/
+  register: homer_ui_content
+  tags:
+    - homer
+    - web
+
+- name: initialize webroot
+  copy:
+    src: "{{ item.path }}"
+    dest: "{{ homer_webroot }}"
+    mode: preserve
+    remote_src: true
+  with_items: "{{ homer_ui_content.files }}"
+  tags:
+    - homer
+    - web
+
+- name: copy api directory to webroot
+  copy:
+    src: /usr/src/homer-api/api
+    dest: "{{ homer_webroot }}"
+    remote_src: true
+  tags:
+    - homer
+    - web
+
+- name: init homer preferences
+  copy:
+    src: /usr/src/homer-api/api/preferences_example.php
+    dest: "{{ homer_webroot }}/api/preferences.php"
+    remote_src: true
+  tags:
+    - homer
+    - web
+    - config
+  changed_when: False  # molecule idempotence test failed without it
+
+- name: init homer configuration
+  copy:
+    src: /usr/src/homer-api/api/configuration_example.php
+    dest: "{{ homer_webroot }}/api/configuration.php"
+    remote_src: true
+  tags:
+    - homer
+    - web
+    - config
+  changed_when: False  # molecule idempotence test failed without it
+
+- name: configure homer db connection
+  replace:
+    path: "{{ homer_webroot }}/api/configuration.php"
+    regexp: "^define\\(\\'{{ item.key }}\\'.*"
+    replace: "define('{{ item.key }}', \"{{ item.value }}\");"
+  with_items:
+    - {key: "DB_USERNAME", value: "{{ homer_database_user }}"}
+    - {key: "DB_PASSWORD", value: "{{ homer_database_pass }}"}
+  tags:
+    - homer
+    - web
+    - config
+  changed_when: False  # molecule idempotence test failed without it

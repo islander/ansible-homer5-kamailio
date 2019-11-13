@@ -1,0 +1,42 @@
+---
+- name: copy recommended mysql settings
+  copy:
+    src: sipcapture.cnf
+    dest: /etc/my.cnf.d
+  notify: reload mysql
+  tags:
+    - homer_db
+
+- name: Create a new databases
+  mysql_db:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - homer_data
+    - homer_configuration
+    - homer_statistic
+  register: db_created
+  tags:
+    - homer_db
+
+- name: Import database schema
+  mysql_db:
+    state: import
+    name: "{{ item.dbname }}"
+    target: "/usr/src/homer-api/sql/{{ item.schema }}"
+  with_items:
+    - {dbname: "homer_data", schema: "schema_data.sql"}
+    - {dbname: "homer_configuration", schema: "schema_configuration.sql"}
+    - {dbname: "homer_statistic", schema: "schema_statistic.sql"}
+  when: db_created is changed
+  tags:
+    - homer_db
+
+- name: Create database user
+  mysql_user:
+    name: homer
+    password: "{{ homer_database_pass }}"
+    priv: 'homer_configuration.*:ALL/homer_statistic.*:ALL/homer_data.*:ALL'
+    state: present
+  tags:
+    - homer_db

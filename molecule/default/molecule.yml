@@ -1,0 +1,27 @@
+---
+dependency:
+  name: galaxy
+driver:
+  name: vagrant
+  provider:
+    name: libvirt
+    type: libvirt
+    options:
+      memory: 1024
+      cpus: 1
+lint:
+  name: yamllint
+platforms:
+  - name: instance
+    box: centos/7
+provisioner:
+  name: ansible
+  lint:
+    name: ansible-lint
+    options:
+      x:
+        - 701  # no galaxy info found
+verifier:
+  name: testinfra
+  lint:
+    name: flake8
