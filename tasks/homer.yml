@@ -69,7 +69,7 @@
     name: "homer rotate"
     minute: "30"
     hour: "4"
-    job: "/opt/sipcapture/homer_mysql_rotate > /dev/null 2>&1"
+    job: "/opt/sipcapture/homer_rotate > /dev/null 2>&1"
     cron_file: homer-rotate
   tags:
     - homer
